@@ -28,11 +28,10 @@ class scanner():
         settings: dict = scanner.get_from_file('ESLifier_Data/settings.json', dict)
         path: str = settings.get('skyrim_folder_path', '')
         scanner.mo2_mode: bool = settings.get('mo2_mode', False)
-        scanner.output_file_name = settings.get('output_folder_name', 'ESLifier Output')
+        scanner.output_file_name = settings.get('output_folder_name', 'ESLifier Merger Output')
         modlist_txt_path: str = settings.get('mo2_modlist_txt_path', '')
         plugins_txt_path: str = settings.get('plugins_txt_path', '')
         scanner.overwrite_path: str = settings.get('overwrite_path', '')
-        update_header: bool = settings.get('update_header', False)
         scanner.all_patcher_experimental: bool = settings.get('all_patcher_experimental', False)
         if scanner.all_patcher_experimental:
             print("~Experimental all patcher mode enabled.")
@@ -123,7 +122,7 @@ class scanner():
             print('Getting Dependencies')
             dependency_dictionary = dependecy_getter.scan()
             print('Scanning Plugins')
-            flag_dict = qualification_checker.scan(path, update_header)
+            flag_dict = qualification_checker.scan(path)
 
         scanner.get_file_masters()
 

@@ -3,39 +3,26 @@ import subprocess
 import json
 import itertools
 from PyQt6.QtCore import Qt, QItemSelection
-from PyQt6.QtWidgets import QAbstractItemView, QMenu, QTableWidget, QTableWidgetItem, QPushButton, QButtonGroup, QListWidget, QListWidgetItem
+from PyQt6.QtWidgets import QAbstractItemView, QMenu, QTableWidget, QTableWidgetItem, QPushButton, QListWidget, QListWidgetItem, QLineEdit
 from blacklist import blacklist
 
-class list_compactable(QTableWidget):
+class list_renumberable(QTableWidget):
     def __init__(self):
         super().__init__()
         c = itertools.count()
         self.MOD_COL = next(c)
-        self.CELL_COL = next(c)
         self.WRLD_COL = next(c)
         self.WTHR_COL = next(c)
         self.SKSE_COL = next(c)
         self.ESM_COL = next(c)
+        self.START_NUM_COL = next(c)
         self.DEP_COL = next(c)
         self.DEP_DISP_COL = next(c)
         self.HIDER_COL = next(c)
         self.COL_COUNT = next(c)
         self.setColumnCount(self.COL_COUNT)
-        self.setHorizontalHeaderLabels(['*   Mod', 'CELL Records', 'WRLD Records', 'WTHR Records', 'SKSE DLL', 'ESM', 'Dependencies', '', 'Hider'])
+        self.setHorizontalHeaderLabels(['*   Mod', 'WRLD Records', 'WTHR Records', 'SKSE DLL', 'ESM', 'Starting Record Number', 'Dependencies', '', 'Hider'])
         self.horizontalHeaderItem(self.MOD_COL).setToolTip('This is the plugin name. Select which plugins you wish to compact.')
-        self.horizontalHeaderItem(self.CELL_COL).setToolTip('This is the CELL Record Flag. It can be completely ignored for users\n'+
-                                                            'with SSE Engine Fixes v7+ on Skyrim 1.6.1170+.\n'+
-                                                            'Otherwise, if an ESM+ESL plugin creates a new CELL and another mod\n'+
-                                                            'changes that CELL then it may not work due to an engine bug. If an\n'+
-                                                            'ESL plugin creates a new interior CELL then that cell may experience\n'+
-                                                            'issues when reloading a save without restarting the game.\n'+
-                                                            '"New  CELL" indicates the presence of a new CELL record.\n'+
-                                                            '"!New Interior CELL!" indicates that a new CELL is an interior.\n'+
-                                                            '"!!New CELL Changed!!" indicates that a new CELL record from an ESM is changed\n'+
-                                                            'by a dependent plugin.\n'+
-                                                            '"!!Maxed Masters!!" indicates that a plugin or its dependent plugins\n'+
-                                                            'have the maximum amount of masters (254) and cannot add ESLifier_Cell_Master.esm\n'+
-                                                            'as a master for the ESL+ESM cell bug and ESL worldspace bug workarounds.')
         self.horizontalHeaderItem(self.WRLD_COL).setToolTip('This is the WRLD Record Flag. It can be completely ignored for users\n'+
                                                             'with SSE Engine Fixes v7+ on Skyrim 1.6.1170+.\n'+
                                                             'Otherwise, if an plugin is flagged ESL\n'+
@@ -46,9 +33,11 @@ class list_compactable(QTableWidget):
         self.horizontalHeaderItem(self.SKSE_COL).setToolTip('This is the skse DLL flag. If a dll has the plugin name in it then it may\n'+
                                                             'have a LookUpForm() call that may break after compacting a flagged plugin.')
         self.horizontalHeaderItem(self.ESM_COL).setToolTip('This is the ESM flag. If a plugin is an ESM then it will be flagged here.')
+        self.horizontalHeaderItem(self.START_NUM_COL).setToolTip('Set the starting record number to renumber the plugin from.')
         self.horizontalHeaderItem(self.DEP_COL).setToolTip('If a plugin has other plugins with it as a master, they will appear when\n'+
                                                             'the button is clicked. These will also have their Form IDs automatically\n'+
                                                             'patched to reflect the Master plugin\'s changes.')
+        self.horizontalHeader
         self.setColumnHidden(self.HIDER_COL, True)
         self.horizontalHeader().sortIndicatorChanged.connect(self.hide_rows)
         self.verticalHeader().setHidden(True)
@@ -63,14 +52,12 @@ class list_compactable(QTableWidget):
         self.customContextMenuRequested.connect(self.contextMenu)
         self.storedSelection = QItemSelection()
         self.flag_dict = {}
-        self.show_cells = True
+        self.record_counts = {}
         self.show_dlls = True
         self.show_esms = True
-        self.filter_changed_cells = True
-        self.filter_interior_cells = False
         self.filter_worldspaces = False
         self.filter_weather = False
-        self.cell_master = False
+        self.update_header = True
         self.hidden_columns = ""
         self.blacklist = blacklist()
 
@@ -102,13 +89,10 @@ class list_compactable(QTableWidget):
         self.clearContents()
         hidden_columns = [col.strip().upper() for col in self.hidden_columns.split(',')]
 
-        if self.show_cells and not "CELL" in hidden_columns: self.showColumn(self.CELL_COL)
-        else: self.hideColumn(self.CELL_COL)
-
         if not self.show_dlls: self.hideColumn(self.SKSE_COL)
         else: self.showColumn(self.SKSE_COL)
 
-        if self.filter_worldspaces or self.cell_master or 'WRLD' in hidden_columns: self.hideColumn(self.WRLD_COL) 
+        if self.filter_worldspaces in hidden_columns: self.hideColumn(self.WRLD_COL) 
         else: self.showColumn(self.WRLD_COL)
 
         if self.filter_weather or "WTHR" in hidden_columns: self.hideColumn(self.WTHR_COL)
@@ -125,14 +109,6 @@ class list_compactable(QTableWidget):
         self.compacted:dict = self.get_data_from_file("ESLifier_Data/compacted_and_patched.json", dict)
         self.dll_dict:dict = self.get_data_from_file("ESLifier_Data/dll_dict.json", dict)
         self.blacklist_list: list[str] = self.get_data_from_file('ESLifier_Data/blacklist.json', list)
-        self.cell_changed:list[str] = self.get_data_from_file("ESLifier_Data/cell_changed.json", list)
-
-        if self.cell_master:
-            self.blacklist_list.extend(["ccafdsse001-dwesanctuary.esm",
-                                        "ccbgssse025-advdsgs.esm",
-                                        "ccbgssse031-advcyrus.esm",
-                                        "cceejsse001-hstead.esm",
-                                        "cceejsse005-cave.esm"])
 
         local_dict = self.flag_dict.copy()
         for mod in self.flag_dict:
@@ -141,12 +117,15 @@ class list_compactable(QTableWidget):
 
         self.setRowCount(len(local_dict))
 
+        self.record_counts =  {
+            k: next(item['record_count'] for item in v if isinstance(item, dict) and 'record_count' in item) 
+            for k, v in local_dict.items()
+        }
+
         def display_dependencies(mod_key):
             index = self.currentRow()
             if self.cellWidget(index, self.DEP_DISP_COL):
                 self.item(index, self.MOD_COL).setTextAlignment(Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
-                if self.item(index, self.CELL_COL):
-                    self.item(index, self.CELL_COL).setTextAlignment(Qt.AlignmentFlag.AlignHCenter|Qt.AlignmentFlag.AlignVCenter)
                 if self.item(index, self.WRLD_COL):
                     self.item(index, self.WRLD_COL).setTextAlignment(Qt.AlignmentFlag.AlignHCenter|Qt.AlignmentFlag.AlignVCenter)
                 self.sender().setText('Show')
@@ -159,8 +138,6 @@ class list_compactable(QTableWidget):
                 self.removeCellWidget(index, self.DEP_DISP_COL)
             else:
                 self.item(index, self.MOD_COL).setTextAlignment(Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignTop)
-                if self.item(index, self.CELL_COL):
-                    self.item(index, self.CELL_COL).setTextAlignment(Qt.AlignmentFlag.AlignHCenter|Qt.AlignmentFlag.AlignTop)
                 if self.item(index, self.WRLD_COL):
                     self.item(index, self.WRLD_COL).setTextAlignment(Qt.AlignmentFlag.AlignHCenter|Qt.AlignmentFlag.AlignTop)
                 self.sender().setText('Hide')
@@ -194,9 +171,11 @@ class list_compactable(QTableWidget):
         for i, (plugin, flags) in enumerate(local_dict.items()):
             basename:str = os.path.basename(plugin)
             item = QTableWidgetItem(basename)
+            hide_row = False
             if basename in self.compacted:
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
                 item.setCheckState(Qt.CheckState.PartiallyChecked)
+                hide_row = True
             else:
                 item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
                 item.setCheckState(Qt.CheckState.Unchecked)
@@ -204,42 +183,7 @@ class list_compactable(QTableWidget):
             item.setTextAlignment(Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
             self.setItem(i, self.MOD_COL, item)
             self.setRowHidden(i, False)
-            hide_row = False
-            if 'new_cell' in flags:
-                item_cell_flag = QTableWidgetItem('New CELL')
-                if not self.cell_master:
-                    item_cell_flag.setToolTip('This mod has a new CELL record and no mods currently modify it.\n'+
-                                            'It is currently safe to ESL flag it.')
-                else:
-                    item_cell_flag.setToolTip('This mod has a new CELL record. It is currently safe to ESL flag it')
-                if not self.show_cells:
-                    hide_row = True
-                if basename in self.cell_changed and not self.cell_master:
-                    item_cell_flag.setText('!!New CELL Changed!!')
-                    item_cell_flag.setToolTip('This mod is an ESM with a new CELL record that is modified by\n'+
-                                              'a dependent plugin. It is NOT recommended to ESL flag it as doing so\n'+
-                                              'will break temporary references in the new CELL.')
-                    if self.filter_changed_cells:
-                        hide_row = True
-                elif self.cell_master and 'maxed_masters' in flags and basename in self.cell_changed:
-                    item_cell_flag.setText('!!Maxed Masters!!')
-                    item_cell_flag.setToolTip('This mod is an ESM with a new CELL record that is modified by\n'+
-                                              'a dependent plugin. It or one of its dependents has the max of\n'+
-                                              '254 masters and cannot have the ESLifier_Cell_Master.esm plugin\n'+
-                                              'added as a master and thus the ESM + ESL cell bug workaround cannot\n'+
-                                              'be applied. It is NOT recommended to ESL flag it as doing so may\n'+
-                                              'break temporary references in its new CELL(s).')
-                    self.showColumn(self.CELL_COL)
-                elif 'new_interior_cell' in flags:
-                    item_cell_flag.setText('!New Interior CELL!')
-                    item_cell_flag.setToolTip('This mod has at least one new CELL record that is an interior cell.\n'+
-                                              'ESL interior cells do not reload gameplay changed references properly\n'+
-                                              'on a save game load unless the game itself has restarted.')
-                    if self.filter_interior_cells:
-                        hide_row = True
-                item_cell_flag.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.setItem(i, self.CELL_COL, item_cell_flag)
-            if 'new_wrld' in flags and not self.cell_master:
+            if 'new_wrld' in flags:
                 item_wrld_flag = QTableWidgetItem('!!New WRLD!!')
                 item_wrld_flag.setToolTip('This mod has a new WRLD (worldspace) record which may lose landscape (the ground) when ESL flagged.')
                 if self.filter_worldspaces:
@@ -267,6 +211,15 @@ class list_compactable(QTableWidget):
                 if not self.show_esms:
                     hide_row = True
                 self.setItem(i, self.ESM_COL, item_esm_flag)
+            start_number_line_edit = QLineEdit()
+            start_number_line_edit.setAlignment(Qt.AlignmentFlag.AlignRight)
+            start_number_line_edit.setInputMask(">HHHHHH;0")
+            if self.update_header:
+                start_number_line_edit.setText('000000')
+            else:
+                start_number_line_edit.setText('000800')
+            start_number_line_edit.setToolTip(f'This field needs to be in hex\nThis plugin has {self.record_counts[plugin]} records')
+            self.setCellWidget(i, self.START_NUM_COL, start_number_line_edit)
             if self.dependency_list[basename.lower()] != []:
                 dL = QPushButton("Show")
                 dL.clicked.connect(lambda _, mod_key=basename.lower(): display_dependencies(mod_key))
@@ -393,6 +346,17 @@ class list_compactable(QTableWidget):
                         self.item(row, self.MOD_COL).setCheckState(Qt.CheckState.Checked)
             except Exception as e:
                 print('!Error: Failed to get previously_compacted.json')
+                print(e)
+        if os.path.exists("ESLifier_Data/starting_numbers.json"):
+            try:
+                with open("ESLifier_Data/starting_numbers.json",'r', encoding='utf-8') as f:
+                    previous_starting_numbers = json.load(f)
+                    f.close()
+                for row in range(self.rowCount()):
+                    if self.isRowHidden(row) == False and self.item(row, self.MOD_COL).checkState() == Qt.CheckState.Checked and self.item(row, self.MOD_COL).text() in previous_starting_numbers:
+                        self.cellWidget(row, self.START_NUM_COL).setText(previous_starting_numbers[self.item(row, self.MOD_COL).text()])
+            except Exception as e:
+                print('!Error: Failed to get starting_numbers.json')
                 print(e)
 
         self.blockSignals(False)

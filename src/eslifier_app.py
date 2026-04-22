@@ -14,7 +14,7 @@ from settings_page import settings
 from main_page import main
 from log_stream import log_stream
 
-CURRENT_VERSION = '0.14.9'
+CURRENT_VERSION = '0.0.1'
 MAJOR, MINOR, PATCH = [int(x, 10) for x in CURRENT_VERSION.split('.')] 
 VERSION_TUPLE = (MAJOR, MINOR, PATCH)
 
@@ -63,7 +63,7 @@ def luhn_checksum(data: bytes) -> int:
 
 def connection_result(is_latest: bool, latest_version: str):
     if not is_latest:
-        QMessageBox.warning(None, 'ESLifier Outdated', f"There exists a new version of ESLifier (v{latest_version}).\n"\
+        QMessageBox.warning(None, 'ESLifier Merger Outdated', f"There exists a new version of ESLifier Merger (v{latest_version}).\n"\
                                                         "It is recommended to update as it could contain critical changes,\n"\
                                                         "bug fixes, or additional file patchers.")
         
@@ -75,12 +75,12 @@ class github_connect(QObject):
             
     def connect_to_github(self) -> tuple[bool, str]:
         try:
-            api_url = f"https://api.github.com/repos/MaskPlague/ESLifier/releases/latest"
+            api_url = f"https://api.github.com/repos/MaskPlague/ESLifier-Merger/releases/latest"
             response = requests.get(api_url, timeout=10)
             response.raise_for_status()
             latest_release_info: dict[str, str] = response.json()
             latest_version = latest_release_info["tag_name"]
-            latest_version = latest_version.removeprefix('v')
+            latest_version = latest_version.removeprefix('v').removesuffix("-alpha").removesuffix("-beta")
             major, minor, patch = [int(x, 10) for x in latest_version.split('.')]
             latest_version_tuple = (major, minor, patch)
             if latest_version_tuple > VERSION_TUPLE:
@@ -195,14 +195,14 @@ class main_window(QMainWindow):
                 major, minor, patch = [int(x, 10) for x in version.split('.')] 
                 version_tuple = (major, minor, patch)
                 if VERSION_TUPLE > version_tuple:
-                    verify_luhn_checksum('ESLifier.exe')
+                    verify_luhn_checksum('ESLifier-Merger.exe')
             elif not curdirIsWritable():
                 QMessageBox.critical(None, "EXE is in a Protected Folder!", "ESLifier is in a protected folder, please move its exe outside of any C:/User/USERNAME/ folder or program files folder.")
                 return 
             else:
-                verify_luhn_checksum('ESLifier.exe')
+                verify_luhn_checksum('ESLifier-Merger.exe')
         
-        self.setWindowTitle("ESLifier v" + CURRENT_VERSION)
+        self.setWindowTitle("ESLifier-Merger ALPHA v" + CURRENT_VERSION)
         self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         self.resize(1300, 500)
         self.move(100,50)
@@ -294,8 +294,7 @@ class main_window(QMainWindow):
         self.update_settings()
         if self.rebuild_lists:
             self.rebuild_lists = False
-            self.main_widget.list_compact.create()
-            self.main_widget.list_eslify.create()
+            self.main_widget.list_renumber.create()
         if index == self.HELP_TAB:
             self.tabs.setCurrentIndex(self.previous_tab)
             self.help_selected()
@@ -341,7 +340,7 @@ class main_window(QMainWindow):
                               f"{os.path.split(os.getcwd())[1]}/\n"+
                               "├─── bsarch/\n"
                               "│        └── BSArch.exe\n"
-                              "└─── ESLifier.exe\n\n")
+                              "└─── ESLifier-Merger.exe\n\n")
                               
         if not os.path.exists(output_path):
             error_message += "Invalid Output Directory, it does not exist.\n"
@@ -425,38 +424,20 @@ class main_window(QMainWindow):
         self.set_colors()
         self.main_widget.skyrim_folder_path =                   self.settings_widget.settings.get('skyrim_folder_path', '')
         self.main_widget.output_folder_path =                   self.settings_widget.settings.get('output_folder_path', '')
-        self.main_widget.output_folder_name =                   self.settings_widget.settings.get('output_folder_name', "ESLifier Output")
+        self.main_widget.output_folder_name =                   self.settings_widget.settings.get('output_folder_name', "ESLifier Merger Output")
         self.main_widget.mo2_mode =                             self.settings_widget.settings.get('mo2_mode', False)
         self.main_widget.modlist_txt_path =                     self.settings_widget.settings.get('mo2_modlist_txt_path', '')
         self.main_widget.plugins_txt_path =                     self.settings_widget.settings.get('plugins_txt_path', '')
         self.main_widget.overwrite_path =                       self.settings_widget.settings.get('overwrite_path', '')
         self.main_widget.update_header =                        self.settings_widget.settings.get('update_header', True)
-        self.main_widget.generate_cell_master =                 self.settings_widget.settings.get('generate_cell_master', True)
-        self.main_widget.list_compact.filter_changed_cells =    self.settings_widget.settings.get('enable_cell_changed_filter', True)
-        self.main_widget.list_compact.filter_interior_cells =   self.settings_widget.settings.get('enable_interior_cell_filter', False)
-        self.main_widget.list_compact.show_cells =              self.settings_widget.settings.get('show_cells', True)
-        self.main_widget.list_compact.show_esms =               self.settings_widget.settings.get('show_esms', True)
-        self.main_widget.list_compact.show_dlls =               self.settings_widget.settings.get('show_dlls', False)
-        self.main_widget.list_compact.filter_worldspaces =      self.settings_widget.settings.get('filter_worldspaces', True)
-        self.main_widget.list_compact.filter_weather =          self.settings_widget.settings.get('filter_weathers', False)
-        self.main_widget.list_compact.cell_master =             self.settings_widget.settings.get('generate_cell_master', True)
-        self.main_widget.list_eslify.hidden_columns =           self.settings_widget.settings.get('left_hidden_columns', '')
-        self.main_widget.list_compact.hidden_columns =          self.settings_widget.settings.get('right_hidden_columns', '')
-        self.main_widget.list_eslify.filter_changed_cells =     self.settings_widget.settings.get('enable_cell_changed_filter', True)
-        self.main_widget.list_eslify.filter_interior_cells =    self.settings_widget.settings.get('enable_interior_cell_filter', False)
-        self.main_widget.list_eslify.show_cells =               self.settings_widget.settings.get('show_cells', True)
-        self.main_widget.list_eslify.show_esms =                self.settings_widget.settings.get('show_esms', True)
-        self.main_widget.list_eslify.filter_worldspaces =       self.settings_widget.settings.get('filter_worldspaces', True)
-        self.main_widget.list_eslify.cell_master =              self.settings_widget.settings.get('generate_cell_master', True)
+        self.main_widget.list_renumber.show_esms =               self.settings_widget.settings.get('show_esms', True)
+        self.main_widget.list_renumber.show_dlls =               self.settings_widget.settings.get('show_dlls', False)
+        self.main_widget.list_renumber.filter_worldspaces =      self.settings_widget.settings.get('filter_worldspaces', True)
+        self.main_widget.list_renumber.filter_weather =          self.settings_widget.settings.get('filter_weathers', False)
+        self.main_widget.list_renumber.hidden_columns =          self.settings_widget.settings.get('right_hidden_columns', '')
+        self.main_widget.list_renumber.update_header =          self.settings_widget.settings.get('update_header', True)
         self.main_widget.settings =                             self.settings_widget.settings.copy()
         self.main_widget.hash_output =                          self.settings_widget.settings.get('hash_output', True)
-
-        if self.settings_widget.settings.get('enable_patch_new', False):
-            self.main_widget.scan_and_patch_new_button_spacer.changeSize(10, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-            self.main_widget.scan_and_patch_new_button.setHidden(False)
-        else:
-            self.main_widget.scan_and_patch_new_button_spacer.changeSize(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-            self.main_widget.scan_and_patch_new_button.setHidden(True)
             
     def set_colors(self):
         inner_color = self.settings_widget.settings['inner_color']

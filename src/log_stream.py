@@ -54,7 +54,7 @@ class log_stream(QMainWindow):
         self.log_file = open("ESLifier_Data/ESLifier.log", 'w', encoding='utf-8')
         formatted_datetime = '[' + datetime.now().isoformat(timespec='milliseconds') + ']\n'
         self.log_file.write(formatted_datetime)
-        self.log_file.write(f'ESLifier Version v{version}\n')
+        self.log_file.write(f'ESLifier-Merger Version v{version}\n')
         self.log_file.write('Working directory is ' + os.getcwd() + '\n')
         self.log_file.flush()
         
@@ -95,7 +95,7 @@ class log_stream(QMainWindow):
             self.list.put(text)
         text = text.strip().removeprefix('\033[F\033[K')
         if (text.startswith(('!', '~')) 
-            or not text.startswith(('-  Gathered:', '-  Winning', '-    Processed', '-  Percentage', '-    Percentage', '-  Extracting:', 'CLEAR')) 
+            or not text.startswith(('-  Gathered:', '-  Winning', '-    Processed', '-  Percentage', '-    Percentage', '-  Extracting:', '-  Reading', 'CLEAR')) 
             and text != ''):
             formatted_datetime = '[' + datetime.now().isoformat(timespec='milliseconds') + '] '
             self.log_file.write(formatted_datetime + text.removeprefix('~') + '\n')
@@ -115,10 +115,6 @@ class log_stream(QMainWindow):
                 self.percentage = int(text[cindex+1:pindex])
             else:
                 self.percentage = int(text[:pindex])
-                
-        if text.startswith('~Ineligible:'):
-            ineligible = text[12:]
-            self.ineligible.append(ineligible)
             
     def missing_patcher_warning(self):
         patcher_message = QMessageBox()

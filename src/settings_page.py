@@ -46,7 +46,7 @@ class settings(QWidget):
         self.output_folder_name_widget, self.output_folder_name = self.create_output_name_text_input_widget(
             "Output Folder Name",
             "Change this to what you want to be the name of the Output Folder.",
-            "ESLifier Output"
+            "ESLifier Merger Output"
         )
         self.overwrite_path_widget, self.overwrite_path = self.create_path_widget(
             "Overwrite Path",
@@ -89,26 +89,6 @@ class settings(QWidget):
             "Show ESM Plugins",
             "Display ESM plugins (.esm/ESM flagged).",
             "show_esms"
-        )
-        self.show_plugins_with_cells_widget, self.show_plugins_with_cells_toggle = self.create_toggle_widget(
-            "Show plugins with new CELL records",
-            "Bugs related to cells have been fixed by SSE Engine Fixes v7+ for Skyrim 1.6.1170+.\n"+
-            "For users of SSE Engine Fixes v7+ there is no reason to disable this.\n"+
-            "Display plugins with new CELL records.",
-            "show_cells"
-        )
-        self.enable_cell_changed_filter_widget, self.enable_cell_changed_filter_toggle = self.create_toggle_widget(
-            "Hide ESM plugins with new CELL records that are overwritten",
-            "The related bug has been fixed by SSE Engine Fixes v7+ for Skyrim 1.6.1170+. Disable this filter.\n"+
-            "Hide ESM plugins with new CELL records that have been changed by a dependent plugin.",
-            "enable_cell_changed_filter"
-        )
-        self.enable_interior_cell_filter_widget, self.enable_interior_cell_filter_toggle = self.create_toggle_widget(
-            "Hide plugins with new interior CELL records",
-            "This bug has been fixed by SSE Engine Fixes v7+ for Skyrim 1.6.1170+. Disable this filter.\n"+
-            "Hide plugins with new interior CELL records as they can have issues when reloading\n"+
-            "a save without restarting the game.",
-            "enable_interior_cell_filter"
         )
         self.enable_worldspaces_filter_widget, self.enable_worldspaces_filter_toggle = self.create_toggle_widget(
             "Hide plugins with new WRLD (worldspace) records",
@@ -163,13 +143,6 @@ class settings(QWidget):
             "instead of 0x80C since 0x80A is free)",
             "free_non_existent"
         )
-        self.enable_patch_new_widget, self.enable_patch_new_toggle = self.create_toggle_widget(
-            "Enable the Patch New or Changed Files Button",
-            "Show the patch new button on the main page. Personally, I think it is useless\n"+
-            "and annoying to maintain. However, I'm sure there is someone who uses it so I'm\n"+
-            "keeping the option here to keep it enabled. Doesn't hash check if output has changed.",
-            "enable_patch_new"
-        )
         self.hash_output_widget, self.hash_output_toggle = self.create_toggle_widget(
             "Hash the Output Folder to Detect Changes",
             "Hash the output folder during certain actions to detect if a file has been changed\n"+
@@ -207,22 +180,6 @@ class settings(QWidget):
             "Open Color Picker",
             self.open_color_dialog
         )
-        self.generate_cell_master_widget, self.generate_cell_master_toggle = self.create_toggle_widget(
-            "Generate Cell Master",
-            "As of SSE Engine Fixes v7+ this is no longer necessary\n"+
-            "for Skyrim version 1.6.1170+ and can be left disabled.\n"+
-            "This generates a master cell plugin to circumvent\n"+
-            "the ESM + ESL cell bug and the ESL worldspace bug.\n"+
-            "(This does not fix the interior ESL save reload bug).\n"+
-            "Requires an ESM plugin slot and is only useful if you\n"+
-            "need to ESL flag more than one such plugin. Do not\n"
-            "forget to activate the new ESLifier_Cell_Master.esm that\n"+
-            "is generated. You may also need to re-sort your plugins.\n"+
-            "This disables the cell changed flag/filter for ESMs and\n"+
-            "the new worldspace flag/filter.",
-            "generate_cell_master"            
-        )
-        self.generate_cell_master_toggle.clicked.connect(self.cell_master_clicked)
 
         self.set_init_widget_values()
         
@@ -263,19 +220,14 @@ class settings(QWidget):
 
         column_1.addWidget(self.update_header_widget)
         column_1.addWidget(self.show_esms_widget)
-        column_1.addWidget(self.show_plugins_with_cells_widget)
-        column_1.addWidget(self.enable_cell_changed_filter_widget)
-        column_1.addWidget(self.enable_interior_cell_filter_widget)
         column_1.addWidget(self.enable_worldspaces_filter_widget)
         column_1.addWidget(self.enable_weather_filter_widget)
         column_1.addWidget(self.show_plugins_possibly_refd_by_dlls_widget)
-        column_1.addWidget(self.generate_cell_master_widget)
         column_1.addWidget(self.hide_left_columns_widget)
         
         column_2.addWidget(self.persistent_ids_widget)
         column_2.addWidget(self.free_non_existent_widget)
         column_2.addWidget(self.hash_output_widget)
-        column_2.addWidget(self.enable_patch_new_widget)
         column_2.addWidget(self.edit_blacklist_widget)
         column_2.addWidget(self.open_eslifier_data_widget)
         column_2.addWidget(self.colors_select_widget)
@@ -376,23 +328,6 @@ class settings(QWidget):
             self.skyrim_folder_path_widget.layout().itemAt(0).widget().setText("Data Folder Path")
             self.skyrim_folder_path.setPlaceholderText('C:/Path/To/Skyrim Special Edition/Data')
     
-    def cell_master_clicked(self):
-        if self.generate_cell_master_toggle.checkState() == Qt.CheckState.Checked:
-            self.enable_cell_changed_filter_widget.setEnabled(False)
-            self.enable_cell_changed_filter_toggle.change_color(circle_color='LightCoral', bg_color='Grey', active_color='Grey')
-            self.enable_cell_changed_filter_widget.setToolTip("Disabled by Generate Cell Master setting.")
-            self.enable_worldspaces_filter_widget.setEnabled(False)
-            self.enable_worldspaces_filter_toggle.change_color(circle_color='LightCoral', bg_color='Grey', active_color='Grey')
-            self.enable_worldspaces_filter_widget.setToolTip("Disabled by Generate Cell Master setting.")
-        else:
-            self.enable_cell_changed_filter_widget.setEnabled(True)
-            self.enable_cell_changed_filter_toggle.change_color()
-            self.enable_cell_changed_filter_widget.setToolTip("Hide ESM plugins with new CELL records that have been changed by a dependent plugin.")
-            self.enable_worldspaces_filter_widget.setEnabled(True)
-            self.enable_worldspaces_filter_toggle.change_color()
-            self.enable_worldspaces_filter_widget.setToolTip("Hide plugins with new worldspaces records as they can have the landscape disappear\n"+
-                                                            "(no ground) when flagged as ESL.")
-    
     def persistent_ids_clicked(self):
         if self.persistent_ids_toggle.checkState() == Qt.CheckState.Checked:
             self.free_non_existent_widget.setEnabled(True)
@@ -438,10 +373,10 @@ class settings(QWidget):
                 self.output_folder_name_valid = True
                 self.update_settings()
             else:
-                if 'eslifier' in text.lower():
+                if 'eslifier' in text.lower() and 'merger' in text.lower():
                     QMessageBox.warning(None, "Invalid Output Name", f"'{text}' is not a valid folder name.")
                 else:
-                    QMessageBox.warning(None, "Output Name missing 'ESLifier'", "The output name must have 'ESLifier' (case insenstive) in it for safety purposes.")
+                    QMessageBox.warning(None, "Output Name missing 'ESLifier' or 'Merger'", "The output name must have 'ESLifier' and 'Merger' (case insenstive) in it for safety purposes.")
                 line_edit.setFocus()
                 self.output_folder_name_valid = False
 
@@ -515,24 +450,19 @@ class settings(QWidget):
             self.settings.clear()
             self.skyrim_folder_path.clear()
             self.output_folder_path.clear()
-            self.output_folder_name.setText('ESLifier Output')
+            self.output_folder_name.setText('ESLifier Merger Output')
             self.overwrite_path.clear()
             self.plugins_txt_path.clear()
             self.mo2_modlist_txt_path.clear()
             self.mo2_mode_toggle.setChecked(False)
             self.update_header_toggle.setChecked(True)
             self.show_esms_toggle.setChecked(True)
-            self.show_plugins_with_cells_toggle.setChecked(True)
             self.show_plugins_possibly_refd_by_dlls_toggle.setChecked(False)
-            self.enable_cell_changed_filter_toggle.setChecked(True)
-            self.enable_interior_cell_filter_toggle.setChecked(False)
             self.enable_worldspaces_filter_toggle.setChecked(True)
             self.enable_weather_filter_toggle.setChecked(False)
-            self.generate_cell_master_toggle.setChecked(False)
             self.check_for_updates_toggle.setChecked(True)
             self.persistent_ids_toggle.setChecked(True)
             self.free_non_existent_toggle.setChecked(False)
-            self.enable_patch_new_toggle.setChecked(False)
             self.hide_left_columns_text_input.clear()
             self.hide_right_columns_text_input.clear()
             self.hash_output_toggle.setChecked(True)
@@ -545,26 +475,21 @@ class settings(QWidget):
     def set_init_widget_values(self):
         self.skyrim_folder_path.setText(self.settings.get('skyrim_folder_path', ''))
         self.output_folder_path.setText(self.settings.get('output_folder_path', ''))
-        self.output_folder_name.setText(self.settings.get('output_folder_name', 'ESLifier Output'))
+        self.output_folder_name.setText(self.settings.get('output_folder_name', 'ESLifier Merger Output'))
         self.overwrite_path.setText(self.settings.get('overwrite_path', ''))
         self.plugins_txt_path.setText(self.settings.get('plugins_txt_path', ''))
         self.mo2_modlist_txt_path.setText(self.settings.get('mo2_modlist_txt_path' ,''))
         self.mo2_mode_toggle.setChecked(self.settings.get('mo2_mode', False))
         self.update_header_toggle.setChecked(self.settings.get('update_header', True))
         self.show_esms_toggle.setChecked(self.settings.get('show_esms', True))
-        self.show_plugins_with_cells_toggle.setChecked(self.settings.get('show_cells', True))
-        self.enable_cell_changed_filter_toggle.setChecked(self.settings.get('enable_cell_changed_filter', True))
-        self.enable_interior_cell_filter_toggle.setChecked(self.settings.get('enable_interior_cell_filter', False))
         self.enable_worldspaces_filter_toggle.setChecked(self.settings.get('filter_worldspaces', True))
         self.enable_weather_filter_toggle.setChecked(self.settings.get('filter_weathers', False))
         self.hide_left_columns_text_input.setText(self.settings.get('left_hidden_columns', ''))
         self.hide_right_columns_text_input.setText(self.settings.get('right_hidden_columns', ''))
         self.show_plugins_possibly_refd_by_dlls_toggle.setChecked(self.settings.get('show_dlls', False))
-        self.generate_cell_master_toggle.setChecked(self.settings.get('generate_cell_master', False))
         self.check_for_updates_toggle.setChecked(self.settings.get('check_for_updates', True))
         self.persistent_ids_toggle.setChecked(self.settings.get('persistent_ids', True))
         self.free_non_existent_toggle.setChecked(self.settings.get('free_non_existent', False))
-        self.enable_patch_new_toggle.setChecked(self.settings.get('enable_patch_new', False))
         self.hash_output_toggle.setChecked(self.settings.get('hash_output', True))
         self.inner_color = self.settings.get('inner_color', '#713585')
         self.outer_color = self.settings.get('outer_color', 'Gray')
@@ -590,19 +515,14 @@ class settings(QWidget):
         self.settings['mo2_mode'] = self.mo2_mode_toggle.isChecked()
         self.settings['update_header'] = self.update_header_toggle.isChecked()
         self.settings['show_esms'] = self.show_esms_toggle.isChecked()
-        self.settings['show_cells'] = self.show_plugins_with_cells_toggle.isChecked()
-        self.settings['enable_cell_changed_filter'] = self.enable_cell_changed_filter_toggle.isChecked()
-        self.settings['enable_interior_cell_filter'] = self.enable_interior_cell_filter_toggle.isChecked()
         self.settings['filter_worldspaces'] = self.enable_worldspaces_filter_toggle.isChecked()
         self.settings['filter_weathers'] = self.enable_weather_filter_toggle.isChecked()
         self.settings['left_hidden_columns'] = self.hide_left_columns_text_input.text()
         self.settings['right_hidden_columns'] = self.hide_right_columns_text_input.text()
         self.settings['show_dlls'] = self.show_plugins_possibly_refd_by_dlls_toggle.isChecked()
-        self.settings['generate_cell_master'] = self.generate_cell_master_toggle.isChecked()
         self.settings['check_for_updates'] = self.check_for_updates_toggle.isChecked()
         self.settings['persistent_ids'] = self.persistent_ids_toggle.isChecked()
         self.settings['free_non_existent'] = self.free_non_existent_toggle.isChecked()
-        self.settings['enable_patch_new'] = self.enable_patch_new_toggle.isChecked()
         self.settings['hash_output'] = self.hash_output_toggle.isChecked()
         self.settings['inner_color'] = self.inner_color
         self.settings['outer_color'] = self.outer_color
@@ -614,13 +534,11 @@ class settings(QWidget):
         else:
             self.mo2_modlist_txt_path_widget.hide()
             self.overwrite_path_widget.hide()
-        self.cell_master_clicked()
         self.persistent_ids_clicked()
 
         self.save_settings_to_file()
 
-        if key in ('show_esms', 'show_cells', 'enable_cell_changed_filter', 'enable_interior_cell_filter', 
-                   'filter_worldspaces', 'filter_weathers', 'show_dlls', 'generate_cell_master', 'reset',
+        if key in ('show_esms', 'filter_worldspaces', 'filter_weathers', 'show_dlls', 'reset',
                    'left_hidden_columns', 'right_hidden_columns'):
             self.eslifier.rebuild_lists = True
         

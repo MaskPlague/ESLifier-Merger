@@ -6,11 +6,12 @@ import struct
 import shutil
 
 class qualification_checker():
-    def scan(path: str, update_header: bool) -> dict:
+    def scan(path: str) -> dict:
         qualification_checker.lock = threading.Lock()
         all_plugins: list[str] = qualification_checker.get_from_file("ESLifier_Data/plugin_list.json")
         qualification_checker.maxed_masters = qualification_checker.get_from_file("ESLifier_Data/maxed_masters.json")
-        plugins = [plugin for plugin in all_plugins if not plugin.lower().endswith('.esl')]
+        plugin_blacklist = ("Skyrim.esm", "Update.esm", "HearthFires.esm", "Dragonborn.esm", "Dawnguard.esm")
+        plugins = [plugin for plugin in all_plugins if not plugin.lower().endswith('.esl') and os.path.basename(plugin) not in plugin_blacklist]
         qualification_checker.missing_skyrim_esm_as_master: dict[str, str] = qualification_checker.get_from_file("ESLifier_Data/missing_skyrim_as_master.json")
         qualification_checker.dependent_dict: dict[str, list[str]] = qualification_checker.get_from_file("ESLifier_Data/dependency_dictionary.json")
         qualification_checker.flag_dict = {}
@@ -19,14 +20,6 @@ class qualification_checker():
             shutil.rmtree('ESLifier_Data/EDIDs')
         if not os.path.exists("ESLifier_Data/EDIDs"):
             os.makedirs("ESLifier_Data/EDIDs")
-        if os.path.exists('ESLifier_Data/Cell_IDs'):
-            shutil.rmtree('ESLifier_Data/Cell_IDs')
-        if not os.path.exists('ESLifier_Data/Cell_IDs/'):
-            os.makedirs('ESLifier_Data/Cell_IDs/')
-        if update_header:
-            qualification_checker.num_max_records = 4096
-        else:
-            qualification_checker.num_max_records = 2048
 
         if len(plugins) > 1000:
             split = 5
@@ -41,7 +34,7 @@ class qualification_checker():
 
         threads: list[threading.Thread] = []
         for chunk in chunks:
-            thread = threading.Thread(target=qualification_checker.plugin_scanner, args=(chunk, update_header,))
+            thread = threading.Thread(target=qualification_checker.plugin_scanner, args=(chunk,))
             threads.append(thread)
             thread.start()
             
@@ -51,36 +44,26 @@ class qualification_checker():
             json.dump(qualification_checker.flag_dict, f, ensure_ascii=False, indent=4)
         return qualification_checker.flag_dict
 
-    def plugin_scanner(plugins: list, update_header: bool):
+    def plugin_scanner(plugins: list):
         flag_dict: dict[str, list[str]] = {}
-        for plugin in plugins:
-            alread_esl, is_esm = qualification_checker.already_esl(plugin)
-            if not alread_esl:
-                esl_allowed, need_compacting, new_cell, interior_cell, new_wrld, new_wthr = qualification_checker.file_reader(plugin, update_header, is_esm)
-                if esl_allowed:
-                    flag_dict[plugin] = []
-                    if need_compacting:
-                        flag_dict[plugin].append('need_compacting')
-                    if new_cell:
-                        flag_dict[plugin].append('new_cell')
-                        if interior_cell:
-                            flag_dict[plugin].append('new_interior_cell')
-                            
-                        basename = os.path.basename(plugin).lower()
-                        if plugin in qualification_checker.maxed_masters:
-                            flag_dict[plugin].append('maxed_masters')
-                        else:
-                            for dependent in qualification_checker.dependent_dict.get(basename, []):
-                                if dependent in qualification_checker.maxed_masters:
-                                    flag_dict[plugin].append('maxed_masters')
-                                    break
-                    if new_wrld:
-                        flag_dict[plugin].append('new_wrld')
-                    if new_wthr:
-                        flag_dict[plugin].append('new_wthr')
-                    if is_esm:
-                        flag_dict[plugin].append('is_esm')
-                        
+        for i, plugin in enumerate(plugins):
+            print(f'\033[F\033[K-  Reading plugin {i} of {len(plugins)} plugins ({os.path.basename(plugin)})\n-', end='\r')
+            is_esm = qualification_checker.is_file_esm(plugin)
+            esl_allowed, need_compacting, new_wrld, new_wthr, record_count = qualification_checker.file_reader(plugin)
+            if esl_allowed:
+                flag_dict[plugin] = []
+                if need_compacting:
+                    flag_dict[plugin].append('need_compacting')
+                if new_wrld:
+                    flag_dict[plugin].append('new_wrld')
+                if new_wthr:
+                    flag_dict[plugin].append('new_wthr')
+                if is_esm:
+                    flag_dict[plugin].append('is_esm')
+
+            flag_dict[plugin].append({'record_count': record_count})
+
+        print(f'\033[F\033[K-  Read {len(plugins)} plugins\n', end='\r')
                         
         with qualification_checker.lock:
             for key, value in flag_dict.items():
@@ -101,9 +84,8 @@ class qualification_checker():
                 offset = offset_end
         return data_list      
 
-    def file_reader(file: str, update_header: bool, is_esm: bool) -> tuple[bool, bool, bool, bool, bool]:
+    def file_reader(file: str) -> tuple[bool, bool, bool, bool, bool]:
         data_list = []
-        basename = os.path.basename(file)
         try:
             with open(file, 'rb') as f:
                 data = f.read()
@@ -113,107 +95,33 @@ class qualification_checker():
             print(e) 
             return False, False, False, False, False, False
 
-        master_count, has_skyrim_esm_master = qualification_checker.get_master_count(data_list)
+        master_count = qualification_checker.get_master_count(data_list)
 
-        if update_header:
-            dependents = qualification_checker.dependent_dict[basename.lower()]
-            all_dependents_have_skyrim_esm_as_master = True
-            for plugin_without_skyrim_esm_as_master, master_0 in qualification_checker.missing_skyrim_esm_as_master.items():
-                if plugin_without_skyrim_esm_as_master in dependents and basename == master_0:
-                    all_dependents_have_skyrim_esm_as_master = False
-                    break
-        else:
-            all_dependents_have_skyrim_esm_as_master = True
-
-        if master_count == 0 or not has_skyrim_esm_master or not all_dependents_have_skyrim_esm_as_master:
-            num_max_records = 2048
-        else:
-            num_max_records = qualification_checker.num_max_records
         count = 0
-        new_cell = False
-        interior_cell_flag = False
         need_compacting = False
         new_wrld = False
         new_wthr = False
-        #edids = []
-        cell_form_ids = []
         for form in data_list:
             record_type = form[:4]
             if record_type not in (b'GRUP', b'TES4') and form[15] >= master_count:
                 count += 1
-                if count > num_max_records:
-                    return False, False, False, False, False, False
-                if int.from_bytes(form[12:15][::-1]) > qualification_checker.max_record_number:
-                    need_compacting = True
-                if record_type == b'CELL':
-                    new_cell = True
-                    if not interior_cell_flag:
-                        flag_byte = form[10]
-                        compressed_flag = (flag_byte & 0x04) != 0
-                        offset = 24
-                        form_to_check = form
-                        if compressed_flag:
-                            form_to_check = zlib.decompress(form[28:])
-                            offset = 0
-                        form_size = len(form_to_check)
-                        while offset < form_size:
-                            field = form_to_check[offset:offset+4]
-                            field_size = struct.unpack("<H", form_to_check[offset+4:offset+6])[0]
-                            if field == b'DATA':
-                                flags = form_to_check[offset+6]
-                                interior_cell_flag = (flags & 0x01) != 0
-                            offset += field_size + 6
-
                 if record_type == b'WRLD':
                     new_wrld = True
 
                 if record_type == b'WTHR':
                     new_wthr = True
-
-                #if record_type in (b'CELL', b'CLMT', b'IMGS', b'LGTM', b'VOLI', b'WTHR'): # Get EDIDs for KreatE and whatever else may use them in the future
-                #    flag_byte = form[10]
-                #    compressed_flag = (flag_byte & 0x04) != 0
-                #    form_to_check = form
-                #    if compressed_flag:
-                #        form_to_check = form[:24] + zlib.decompress(form[28:])
-                #    if form_to_check[24:28] == b'EDID':
-                #        offset = 28
-                #        edid_len = struct.unpack("<H", form_to_check[offset:offset+2])[0]
-                #        offset += 2
-                #        edids.append(form_to_check[offset:offset+edid_len-1].decode())
-
-            if record_type == b'CELL' and form[15] >= master_count and str(form[12:15].hex()) not in cell_form_ids:
-                cell_form_ids.append(str(form[12:15].hex()))
         
-        #edids.sort()
-        #if edids != []:
-        #    edid_file = "ESLifier_Data/EDIDs/" + basename + '_EDIDs.txt'
-        #    with open(edid_file, 'w', encoding='utf-8') as f:
-        #        for edid in edids:
-        #            f.write(edid + '\n')
-        cell_form_ids.sort()
-        if cell_form_ids != [] and is_esm:
-            cell_form_id_file = 'ESLifier_Data/Cell_IDs/' + basename + '_CellFormIDs.txt'
-            with open(cell_form_id_file, 'w', encoding='utf-8') as f:
-                for form_id in cell_form_ids:
-                    f.write(form_id + '\n')
-        return True, need_compacting, new_cell, interior_cell_flag, new_wrld, new_wthr
+        return True, need_compacting, new_wrld, new_wthr, count
 
-    def already_esl(file: str) -> tuple[bool, bool]:
+    def is_file_esm(file: str) -> bool:
         with open(file, 'rb') as f:
             if file.lower().endswith('.esm'):
-                esm = True
-            else:
-                esm = False
+                return True
             f.seek(8)
             esm_flag = f.read(1)
             if esm_flag in (b'\x81', b'\x01'):
-                esm = True
-            esl_flag = f.read(1)
-            if esl_flag == b'\x02':
-                return True, esm
-            else:
-                return False, esm #not esl, so it does qualify for processing
+                return True
+            return False
             
     def get_from_file(file: str) -> list | dict:
         try:
@@ -228,15 +136,11 @@ class qualification_checker():
         offset = 24
         data_len = len(tes4)
         master_count = 0
-        has_skyrim_esm_master = False
         while offset < data_len:
             field = tes4[offset:offset+4]
             field_size = struct.unpack("<H", tes4[offset+4:offset+6])[0]
             if field == b'MAST':
                 master_count += 1
-                if field_size == 11:
-                    if tes4[offset+6:offset+16] == b'Skyrim.esm':
-                        has_skyrim_esm_master = True
             offset += field_size + 6
 
-        return master_count, has_skyrim_esm_master
+        return master_count

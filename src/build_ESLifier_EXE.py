@@ -27,7 +27,7 @@ def append_luhn_checksum(filename):
 def compile_exe():
     working_directory = os.getcwd()
     with subprocess.Popen(
-        ["pyinstaller", "src/eslifier_app.py", "--onefile", "-n", "ESLifier", "--noconsole", "--icon", "src/images/ESLifier.ico"],
+        ["pyinstaller", "src/eslifier_app.py", "--onefile", "-n", "ESLifier-Merger", "--noconsole", "--icon", "src/images/ESLifier.ico"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -40,6 +40,6 @@ def compile_exe():
 
 compile_exe()
 print('Calculating Checksum')
-append_luhn_checksum("dist\\ESLifier.exe")
+append_luhn_checksum("dist\\ESLifier-Merger.exe")
 formatted_datetime = datetime.now().isoformat(timespec='milliseconds')
 print("Last Ran: " + formatted_datetime)
