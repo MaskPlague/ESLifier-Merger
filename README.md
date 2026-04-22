@@ -1,4 +1,4 @@
-# ESLifier (This README may be outdated, when in doubt, refer to the tool tips inside the program)
+# ESLifier Merger (W.I.P)
 TBD
   
 # For Users
