@@ -3,7 +3,7 @@ from file_patchers import patchers
 from file_defined_patcher_conditions import user_and_master_conditions_class
 
 def patch_file_conditions(new_file_lower: str, new_file: str, basename: str, form_id_map: dict, form_id_rename_map: dict,
-                        master_byte: bytes, updated_master_index: int, additional_conditions: user_and_master_conditions_class,
+                        master_byte: bytes, additional_conditions: user_and_master_conditions_class,
                         encoding: str):
     if new_file_lower.endswith('.ini'):
         if new_file_lower.endswith(('_distr.ini', '_kid.ini', '_swap.ini', '_enbl.ini',     # PO3's SPID, KID, BOS, ENBL
@@ -201,7 +201,7 @@ def patch_file_conditions(new_file_lower: str, new_file: str, basename: str, for
     elif 'facegeom' in new_file_lower and new_file_lower.endswith('.nif'):                  # FaceGeom mesh patching
         patchers.facegeom_mesh_patcher(basename, new_file, form_id_rename_map)
     elif new_file_lower.endswith('.seq'):                                                   # SEQ file patching
-        patchers.seq_patcher(new_file, form_id_map, master_byte, updated_master_index=updated_master_index, update_byte=False)
+        patchers.seq_patcher(new_file, form_id_map, master_byte=master_byte)
     elif new_file_lower.endswith('.jslot'):                                                 # Racemenu Presets
         patchers.jslot_patcher(basename, new_file, form_id_map, encoding_method=encoding)
     elif new_file_lower.endswith('config.txt') and 'plugins\\customskill' in new_file_lower: # CSF's old txt format
