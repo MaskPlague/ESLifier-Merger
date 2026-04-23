@@ -28,56 +28,23 @@ class form_processor():
             field = form[offset:offset+4]
             return field, field_size, offset
         
-    def patch_form_data(data_list, forms, form_id_replacements, master_byte, form_ids, updated_master_index):
-        if updated_master_index == -1:
-            updated_master_byte = (int.from_bytes(master_byte) + 1).to_bytes()
-        else:
-            updated_master_byte = master_byte
+    def patch_form_data(data_list, forms, form_id_replacements: dict, master_byte: bytes):
         for i, form, offsets in forms:
             for offset in offsets:
                 if form[offset+3:offset+4] >= master_byte:
-                    updated = False
                     to_id = form_id_replacements.get(bytes(form[offset:offset+3]))
                     if to_id is not None:
-                        if len(to_id) == 4:
-                            form[offset:offset+4] = to_id
-                            updated = True
-                        else:
-                            form[offset:offset+4] = to_id + updated_master_byte
-                            updated = True
-                    if not updated and bytes(form[offset:offset+4]) in form_ids:
-                        form[offset:offset+4] = form[offset:offset+3] + updated_master_byte
+                        form[offset:offset+4] = to_id + master_byte
             data_list[i] = bytes(form)
         return data_list
     
-    def patch_form_data_dependent(data_list, forms, form_id_replacements, master_index_byte, master_byte, form_ids, updated_master_index):
-        if updated_master_index == -1:
-            updated_master_byte = (int.from_bytes(master_byte) + 1).to_bytes()
-        else:
-            updated_master_byte = master_byte
+    def patch_form_data_dependent(data_list, forms, form_id_replacements: dict, master_index_byte):
         for i, form, offsets in forms:
             for offset in offsets:
-                form_master_byte = form[offset+3:offset+4]
-                is_being_patched = form_master_byte == master_index_byte
-                is_being_updated = form_master_byte >= master_byte
-                if is_being_patched or is_being_updated:
-                    updated = False if is_being_updated else True
+                if form[offset+3:offset+4] == master_index_byte:
                     to_id = form_id_replacements.get(bytes(form[offset:offset+3]))
                     if to_id is not None:
-                        if len(to_id) == 4 and is_being_patched:    # Update Cell masters
-                            form[offset:offset+4] = to_id
-                            updated = True
-                        elif is_being_updated and is_being_patched: # Update master byte and patch form id
-                            form[offset:offset+4] = to_id + updated_master_byte
-                            updated = True
-                        elif is_being_updated:                      # Update master byte only
-                            form[offset+3:offset+4] = updated_master_byte
-                            updated = True
-                        else:                                       # Patch compacted master form id
-                            form[offset:offset+3] = to_id
-                            updated = True
-                    if not updated and bytes(form[offset:offset+4]) in form_ids:
-                        form[offset:offset+4] = form[offset:offset+3] + updated_master_byte
+                        form[offset:offset+3] = to_id
             data_list[i] = bytes(form)
         return data_list
     

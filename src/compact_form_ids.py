@@ -31,7 +31,7 @@ else:
 class CFIDs():
     def __init__(self, skyrim_folder_path: str, output_folder_path: str, output_folder_name: str, overwrite_path: str, update_header: bool, mo2_mode: bool,
                   original_files: dict, winning_files_dict: dict, winning_file_history_dict: dict,
-                  compacted_and_patched: dict, master_byte_data:dict, bsa_masters: list, bsa_dict: dict, persistent_ids: bool, free_non_existent: bool,
+                  compacted_and_patched:dict, bsa_masters: list, bsa_dict: dict, persistent_ids: bool, free_non_existent: bool,
                   additional_file_patcher_conditions, all_patcher_experimental):
         self.skyrim_folder_path = os.path.normpath(skyrim_folder_path)
         self.output_folder_path = os.path.normpath(output_folder_path)
@@ -44,7 +44,6 @@ class CFIDs():
         self.winning_files_dict: dict = winning_files_dict
         self.winning_file_history_dict = winning_file_history_dict
         self.compacted_and_patched: dict[str, list[str]] = compacted_and_patched
-        self.master_byte_data = master_byte_data
         self.bsa_masters = bsa_masters
         self.bsa_dict = bsa_dict
         self.persistent_ids = persistent_ids
@@ -58,7 +57,6 @@ class CFIDs():
         self.dump_compacted_and_patched('ESLifier_Data/compacted_and_patched.json', self.compacted_and_patched)
         self.dump_dictionary('ESLifier_Data/original_files.json', self.original_files)
         self.dump_dictionary('ESLifier_Data/winning_file_history_dict.json', self.winning_file_history_dict)
-        self.dump_dictionary('ESLifier_Data/master_byte_data.json', self.master_byte_data)
 
     def dump_compacted_and_patched(self, file, dictionary: dict[str, list[str]]):
         data: dict[str, list[str]] = self.get_from_file(file)
@@ -192,7 +190,7 @@ class CFIDs():
             print('-  Deleting temporarily Extracted FaceGen/Voice Files...')
             shutil.rmtree('bsa_extracted_temp/')
         print('CLEAR ALT')
-        return self.original_files, self.winning_files_dict, self.master_byte_data, self.winning_file_history_dict, self.compacted_and_patched
+        return
     
     def bsa_temp_extract(self, bsa_file: str, type: str, name:str, startupinfo: subprocess.STARTUPINFO):
         with subprocess.Popen(
@@ -315,14 +313,15 @@ class CFIDs():
             
             rel_path = self.get_rel_path(file)
             for form_ids in self.form_id_rename_map:
-                if form_ids[0].lower() in file.lower():
+                form_ids_0_lower = form_ids[0].lower()
+                if file.lower().endswith((form_ids_0_lower + '.nif', form_ids_0_lower + '.dds')):
                     with self.semaphore:
                         new_file, rel_path_new_file = self.copy_file_to_output(file)
-                        index = new_file.lower().index(form_ids[0].lower())
+                        index = len(new_file) - 10
                         renamed_file = new_file[:index] + form_ids[1].upper() + new_file[index+6:]
                         with self.lock:
                             os.replace(new_file, renamed_file)
-                        index = rel_path_new_file.lower().index(form_ids[0].lower())
+                        index = len(rel_path_new_file) - 10
                         rel_path_renamed_file = rel_path_new_file[:index] + form_ids[1].upper() + rel_path_new_file[index+6:]
                         with self.lock:
                             if rel_path_new_file not in self.compacted_and_patched[master_base_name]:
@@ -415,17 +414,13 @@ class CFIDs():
                     with self.lock:
                         try:
                             patcher_conditions.patch_file_conditions(new_file_lower, new_file, basename, self.form_id_map, self.form_id_rename_map, 
-                                                                     self.master_byte, self.updated_master_index,
-                                                                     self.additional_conditions, 'utf-8')
+                                                                     self.master_byte, self.additional_conditions, 'utf-8')
+                        except UnicodeDecodeError:
+                            patcher_conditions.patch_file_conditions(new_file_lower, new_file, basename, self.form_id_map, self.form_id_rename_map, 
+                                                                     self.master_byte, self.additional_conditions, 'ansi')
                         except Exception as e:
-                            exception_type = type(e)
-                            if exception_type == UnicodeDecodeError:
-                                patcher_conditions.patch_file_conditions(new_file_lower, new_file, basename, self.form_id_map, self.form_id_rename_map, 
-                                                                         self.master_byte, self.updated_master_index,
-                                                                          self.additional_conditions, 'ansi')
-                            else:
-                                print(f'!Error: Failed to patch file: {new_file}')
-                                print(e)
+                            print(f'!Error: Failed to patch file: {new_file}')
+                            print(e)
                         self.compacted_and_patched[os.path.basename(master)].append(rel_path)
             except Exception as e:
                 print(f'!Error: Failed to patch file: {new_file}')
@@ -539,18 +534,15 @@ class CFIDs():
         master_count, has_skyrim_esm_master = self.get_master_count(data_list)
 
         data_list, sizes_list = self.decompress_data(data_list)
-        updated_master_index: int = -1
 
         form_id_list = []
         #Get all new form ids in plugin
         for form in data_list:
-            if form[:4] not in (b'GRUP', b'TES4') and form[15] >= master_count and form[12:16] not in form_id_list:
+            if form[:4] not in (b'GRUP', b'TES4') and form[15] >= master_count and [form[12:16], form[:4]] not in form_id_list:
                 form_id_list.append([form[12:16], form[:4]])
 
         master_byte = master_count.to_bytes()
         self.master_byte = master_byte
-        self.updated_master_index = updated_master_index
-        self.master_byte_data[basename] = {'master_byte': master_byte.hex(), 'updated_master_index': updated_master_index}
 
         saved_forms = form_processor.save_all_form_data(data_list)
 
@@ -558,12 +550,8 @@ class CFIDs():
 
         all_form_ids_list = [form_id for form_id, record_type in form_id_list]
         
-        if self.update_header and master_count != 0 and has_skyrim_esm_master and all_dependents_have_skyrim_esm_as_master:
-            new_id = binascii.unhexlify(master_count.to_bytes().hex() + start_number)
-            new_range = record_count+1
-        else:
-            new_id = binascii.unhexlify(master_count.to_bytes().hex() + start_number)
-            new_range = record_count+1
+        new_id = binascii.unhexlify(master_count.to_bytes().hex() + start_number)
+        new_range = record_count+1
         new_id_len = len(new_id)
         counter = int.from_bytes(new_id, 'big')
 
@@ -590,17 +578,10 @@ class CFIDs():
         if self.persistent_ids and os.path.exists(form_id_file_name):
             with open(form_id_file_name, 'r', encoding='utf-8') as f:
                 form_id_file_data = f.readlines()
-            old_ids_of_new_cells = []
             for i in range(len(form_id_file_data)):
                 form_id_conversion = form_id_file_data[i].split('|')
                 from_id = bytes.fromhex(form_id_conversion[0])[:3] + master_byte
-                if from_id in old_ids_of_new_cells:
-                    if updated_master_index == -1:
-                        to_id = bytes.fromhex(form_id_conversion[1])[:3] + master_byte + b'\xFF'
-                    else:
-                        to_id = bytes.fromhex(form_id_conversion[1])[:3] + updated_master_index.to_bytes() + b'\xFF'
-                else:
-                    to_id = bytes.fromhex(form_id_conversion[1])[:4]
+                to_id = bytes.fromhex(form_id_conversion[1])[:4]
                 if from_id in all_form_ids_list:
                     form_id_replacements.append([from_id, to_id])
                 elif not self.free_non_existent:
@@ -638,8 +619,7 @@ class CFIDs():
 
         form_id_replacements_no_master_byte = {old_id[:3]: new_id[:3] if len(new_id) <= 4 else new_id[:4] for old_id, new_id in form_id_replacements}
         
-        data_list = form_processor.patch_form_data(data_list, saved_forms, form_id_replacements_no_master_byte, master_byte, 
-                                                   set(all_form_ids_list), updated_master_index)
+        data_list = form_processor.patch_form_data(data_list, saved_forms, form_id_replacements_no_master_byte, master_byte)
 
         data_list, sizes_list = self.recompress_data(data_list, sizes_list)
 
@@ -701,9 +681,8 @@ class CFIDs():
 
                 master_index_byte = master_index.to_bytes()
 
-                form_id_list = []
-                master_byte = b''
-                updated_master_index: int = -1
+                master_byte_for_seq = self.get_master_count(data_list)[0].to_bytes()
+
                 saved_forms = form_processor.save_all_form_data(data_list)
 
                 #TODO: Optimize this, there is no point in splitting the form id map data each dependent
@@ -714,8 +693,8 @@ class CFIDs():
                     to_id = id[:3]
                     form_id_replacements.append([from_id, to_id])
                 form_id_replacements_dict = {key: value for key, value in form_id_replacements}
-                data_list = form_processor.patch_form_data_dependent(data_list, saved_forms, form_id_replacements_dict, master_index_byte, master_byte,
-                                                                    set(form_id_list), updated_master_index)
+                
+                data_list = form_processor.patch_form_data_dependent(data_list, saved_forms, form_id_replacements_dict, master_index_byte)
 
                 data_list, sizes_list = self.recompress_data(data_list, sizes_list)
                 
@@ -728,7 +707,6 @@ class CFIDs():
 
             with self.lock:
                 self.compacted_and_patched[os.path.basename(file)].append(rel_path)
-                self.master_byte_data[os.path.basename(file)]= {'master_byte': master_byte.hex(), 'updated_master_index': updated_master_index}
         except Exception as e:
             print(f'!Error: Failed to patch depdendent: {new_file}')
             print(e)
@@ -736,7 +714,7 @@ class CFIDs():
 
         if new_seq_file:
             try:
-                patchers.seq_patcher(new_seq_file, form_id_replacements, master_byte, updated_master_index=updated_master_index, update_byte=False, dependent=True)
+                patchers.dependent_seq_patcher(new_seq_file, form_id_replacements, -1, master_byte_for_seq, master_index_byte, update_byte=False)
             except Exception as e:
                 print(f'!Error: Failed to patch depdendent\'s SEQ file: {new_seq_file}')
                 print(e)
