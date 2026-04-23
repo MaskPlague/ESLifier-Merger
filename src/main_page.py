@@ -438,8 +438,6 @@ class main(QWidget):
                 os.remove('ESLifier_Data/esl_flagged.json')
             if os.path.exists('ESLifier_Data/original_files.json'):
                 os.remove('ESLifier_Data/original_files.json')
-            if os.path.exists('ESLifier_Data/master_byte_data.json'):
-                os.remove('ESLifier_Data/master_byte_data.json')
             if os.path.exists('ESLifier_Data/starting_numbers.json'):
                 os.remove('ESLifier_Data/starting_numbers.json')
             self.delete_output(self.output_folder_full, files_to_remove)
@@ -525,8 +523,6 @@ class main(QWidget):
                 os.remove("ESLifier_Data/winning_file_history_dict.json")
             if os.path.exists("ESLifier_Data/winning_files_dict.json"):
                 os.remove("ESLifier_Data/winning_files_dict.json")
-            if os.path.exists('ESLifier_Data/master_byte_data.json'):
-                os.remove('ESLifier_Data/master_byte_data.json')
             if len(previously_compacted) == 0:
                 QMessageBox.warning(None, "No Existing Output Data", f"There is no existing output data for ESLifier to use.")
                 return
@@ -929,7 +925,6 @@ class CompactorWorker(QObject):
                 missing_skyrim_esm = {}
         original_files: dict = self.get_from_file('ESLifier_Data/original_files.json')
         winning_files_dict: dict = self.get_from_file('ESLifier_Data/winning_files_dict.json')
-        master_byte_data: dict = self.get_from_file('ESLifier_Data/master_byte_data.json')
         files_to_patch: dict = self.get_from_file('ESLifier_Data/file_masters.json')
         bsa_dict: dict = self.get_from_file('ESLifier_Data/bsa_dict.json')
         bsa_masters = []
@@ -937,7 +932,7 @@ class CompactorWorker(QObject):
             bsa_masters.extend(value)
 
         additional_file_patcher_conditions = user_and_master_conditions_class()
-        cfids = CFIDs(self.skyrim_folder_path, self.output_folder_path, self.output_folder_name, self.overwrite_path, self.update_header, self.mo2_mode, original_files, winning_files_dict, {}, {}, master_byte_data, bsa_masters, bsa_dict,
+        cfids = CFIDs(self.skyrim_folder_path, self.output_folder_path, self.output_folder_name, self.overwrite_path, self.update_header, self.mo2_mode, original_files, winning_files_dict, {}, {}, bsa_masters, bsa_dict,
                       self.persistent_ids, self.free_non_existent, additional_file_patcher_conditions, self.all_patcher_experimental)
         cfids.dump_dictionary("ESLifier_Data/starting_numbers.json", self.starting_numbers_dict)
         if self.hash_output:
