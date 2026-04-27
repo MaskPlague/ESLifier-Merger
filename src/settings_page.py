@@ -90,12 +90,6 @@ class settings(QWidget):
             "Display ESM plugins (.esm/ESM flagged).",
             "show_esms"
         )
-        self.enable_worldspaces_filter_widget, self.enable_worldspaces_filter_toggle = self.create_toggle_widget(
-            "Hide plugins with new WRLD (worldspace) records",
-            "Hide plugins with new worldspaces records as they can have the landscape disappear\n"+
-            "(no ground) when flagged as ESL.",
-            "filter_worldspaces"
-        )
         self.enable_weather_filter_widget, self.enable_weather_filter_toggle = self.create_toggle_widget(
             "Hide plugins with new WTHR (weather) records",
             "Hide plugins with new weather records as they can be referenced in ENB presets which are not patched",
@@ -220,7 +214,6 @@ class settings(QWidget):
 
         column_1.addWidget(self.update_header_widget)
         column_1.addWidget(self.show_esms_widget)
-        column_1.addWidget(self.enable_worldspaces_filter_widget)
         column_1.addWidget(self.enable_weather_filter_widget)
         column_1.addWidget(self.show_plugins_possibly_refd_by_dlls_widget)
         column_1.addWidget(self.hide_left_columns_widget)
@@ -458,7 +451,6 @@ class settings(QWidget):
             self.update_header_toggle.setChecked(True)
             self.show_esms_toggle.setChecked(True)
             self.show_plugins_possibly_refd_by_dlls_toggle.setChecked(False)
-            self.enable_worldspaces_filter_toggle.setChecked(True)
             self.enable_weather_filter_toggle.setChecked(False)
             self.check_for_updates_toggle.setChecked(True)
             self.persistent_ids_toggle.setChecked(True)
@@ -482,7 +474,6 @@ class settings(QWidget):
         self.mo2_mode_toggle.setChecked(self.settings.get('mo2_mode', False))
         self.update_header_toggle.setChecked(self.settings.get('update_header', True))
         self.show_esms_toggle.setChecked(self.settings.get('show_esms', True))
-        self.enable_worldspaces_filter_toggle.setChecked(self.settings.get('filter_worldspaces', True))
         self.enable_weather_filter_toggle.setChecked(self.settings.get('filter_weathers', False))
         self.hide_left_columns_text_input.setText(self.settings.get('left_hidden_columns', ''))
         self.hide_right_columns_text_input.setText(self.settings.get('right_hidden_columns', ''))
@@ -515,7 +506,6 @@ class settings(QWidget):
         self.settings['mo2_mode'] = self.mo2_mode_toggle.isChecked()
         self.settings['update_header'] = self.update_header_toggle.isChecked()
         self.settings['show_esms'] = self.show_esms_toggle.isChecked()
-        self.settings['filter_worldspaces'] = self.enable_worldspaces_filter_toggle.isChecked()
         self.settings['filter_weathers'] = self.enable_weather_filter_toggle.isChecked()
         self.settings['left_hidden_columns'] = self.hide_left_columns_text_input.text()
         self.settings['right_hidden_columns'] = self.hide_right_columns_text_input.text()
@@ -538,7 +528,7 @@ class settings(QWidget):
 
         self.save_settings_to_file()
 
-        if key in ('show_esms', 'filter_worldspaces', 'filter_weathers', 'show_dlls', 'reset',
+        if key in ('show_esms', 'filter_weathers', 'show_dlls', 'reset',
                    'left_hidden_columns', 'right_hidden_columns'):
             self.eslifier.rebuild_lists = True
         

@@ -49,13 +49,11 @@ class qualification_checker():
         for i, plugin in enumerate(plugins):
             print(f'\033[F\033[K-  Reading plugin {i} of {len(plugins)} plugins ({os.path.basename(plugin)})\n-', end='\r')
             is_esm = qualification_checker.is_file_esm(plugin)
-            esl_allowed, need_compacting, new_wrld, new_wthr, record_count = qualification_checker.file_reader(plugin)
+            esl_allowed, need_compacting, new_wthr, record_count = qualification_checker.file_reader(plugin)
             if esl_allowed:
                 flag_dict[plugin] = []
                 if need_compacting:
                     flag_dict[plugin].append('need_compacting')
-                if new_wrld:
-                    flag_dict[plugin].append('new_wrld')
                 if new_wthr:
                     flag_dict[plugin].append('new_wthr')
                 if is_esm:
@@ -99,19 +97,16 @@ class qualification_checker():
 
         count = 0
         need_compacting = False
-        new_wrld = False
         new_wthr = False
         for form in data_list:
             record_type = form[:4]
             if record_type not in (b'GRUP', b'TES4') and form[15] >= master_count:
                 count += 1
-                if record_type == b'WRLD':
-                    new_wrld = True
 
                 if record_type == b'WTHR':
                     new_wthr = True
         
-        return True, need_compacting, new_wrld, new_wthr, count
+        return True, need_compacting, new_wthr, count
 
     def is_file_esm(file: str) -> bool:
         with open(file, 'rb') as f:

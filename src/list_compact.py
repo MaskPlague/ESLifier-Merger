@@ -11,7 +11,6 @@ class list_renumberable(QTableWidget):
         super().__init__()
         c = itertools.count()
         self.MOD_COL = next(c)
-        self.WRLD_COL = next(c)
         self.WTHR_COL = next(c)
         self.SKSE_COL = next(c)
         self.ESM_COL = next(c)
@@ -21,12 +20,8 @@ class list_renumberable(QTableWidget):
         self.HIDER_COL = next(c)
         self.COL_COUNT = next(c)
         self.setColumnCount(self.COL_COUNT)
-        self.setHorizontalHeaderLabels(['*   Mod', 'WRLD Records', 'WTHR Records', 'SKSE DLL', 'ESM', 'Starting Record Number', 'Dependencies', '', 'Hider'])
+        self.setHorizontalHeaderLabels(['*   Mod', 'WTHR Records', 'SKSE DLL', 'ESM', 'Starting Record Number', 'Dependencies', '', 'Hider'])
         self.horizontalHeaderItem(self.MOD_COL).setToolTip('This is the plugin name. Select which plugins you wish to compact.')
-        self.horizontalHeaderItem(self.WRLD_COL).setToolTip('This is the WRLD Record Flag. It can be completely ignored for users\n'+
-                                                            'with SSE Engine Fixes v7+ on Skyrim 1.6.1170+.\n'+
-                                                            'Otherwise, if an plugin is flagged ESL\n'+
-                                                            'then the new worldspace may have landscape issues (no ground).')
         self.horizontalHeaderItem(self.WTHR_COL).setToolTip('This is the WTHR Record Flag. This is an indicator if a mod has a new weather record\n'+
                                                             'Some mods weathers are referenced in ENB Presets which cannot be patched by ESLifier\n'+
                                                             'It is at the user\'s discretion if a plugin with new weather should be compacted.')
@@ -92,9 +87,6 @@ class list_renumberable(QTableWidget):
         if not self.show_dlls: self.hideColumn(self.SKSE_COL)
         else: self.showColumn(self.SKSE_COL)
 
-        if self.filter_worldspaces in hidden_columns: self.hideColumn(self.WRLD_COL) 
-        else: self.showColumn(self.WRLD_COL)
-
         if self.filter_weather or "WTHR" in hidden_columns: self.hideColumn(self.WTHR_COL)
         else: self.showColumn(self.WTHR_COL)
 
@@ -126,8 +118,6 @@ class list_renumberable(QTableWidget):
             index = self.currentRow()
             if self.cellWidget(index, self.DEP_DISP_COL):
                 self.item(index, self.MOD_COL).setTextAlignment(Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
-                if self.item(index, self.WRLD_COL):
-                    self.item(index, self.WRLD_COL).setTextAlignment(Qt.AlignmentFlag.AlignHCenter|Qt.AlignmentFlag.AlignVCenter)
                 self.sender().setText('Show')
                 self.sender().setStyleSheet("""
                     QPushButton{
@@ -138,8 +128,6 @@ class list_renumberable(QTableWidget):
                 self.removeCellWidget(index, self.DEP_DISP_COL)
             else:
                 self.item(index, self.MOD_COL).setTextAlignment(Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignTop)
-                if self.item(index, self.WRLD_COL):
-                    self.item(index, self.WRLD_COL).setTextAlignment(Qt.AlignmentFlag.AlignHCenter|Qt.AlignmentFlag.AlignTop)
                 self.sender().setText('Hide')
                 self.sender().setStyleSheet("""
                     QPushButton{
@@ -183,12 +171,6 @@ class list_renumberable(QTableWidget):
             item.setTextAlignment(Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
             self.setItem(i, self.MOD_COL, item)
             self.setRowHidden(i, False)
-            if 'new_wrld' in flags:
-                item_wrld_flag = QTableWidgetItem('!!New WRLD!!')
-                item_wrld_flag.setToolTip('This mod has a new WRLD (worldspace) record which may lose landscape (the ground) when ESL flagged.')
-                if self.filter_worldspaces:
-                    hide_row = True
-                self.setItem(i, self.WRLD_COL, item_wrld_flag)
             if 'new_wthr' in flags:
                 item_wthr_flag = QTableWidgetItem('!New WTHR!')
                 item_wthr_flag.setToolTip('This mod has a new WTHR (weather) record which can be referenced in\n'+
