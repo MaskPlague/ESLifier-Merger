@@ -5,10 +5,10 @@ import threading
 import timeit
 import hashlib
 
-from PyQt6.QtCore import Qt, QThread, QObject, pyqtSignal, QTimer, QRunnable, QThreadPool
-from PyQt6.QtWidgets import (QHBoxLayout, QVBoxLayout, QLabel, QWidget, QPushButton, QLineEdit, QMessageBox, 
-                             QSplitter, QFrame, QTextEdit, QListWidget, QListWidgetItem, QDialog, QSpacerItem, QSizePolicy)
-from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import Qt, QThread, QObject, pyqtSignal, QTimer, QThreadPool
+from PyQt6.QtWidgets import (QHBoxLayout, QVBoxLayout, QLabel, QWidget, QPushButton, QLineEdit, QMessageBox, QApplication,
+                             QSplitter, QFrame, QTextEdit, QListWidget, QListWidgetItem, QDialog)
+from PyQt6.QtGui import QIcon, QCursor
 
 from list_compact import list_renumberable
 from scanner import scanner
@@ -845,6 +845,7 @@ class main(QWidget):
                 print(f"~Warn: Could not remove {path}: {e}")
         
     def delete_output(self, output_folder: str, files_to_remove: list[str], remove_maps=True):
+        QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
         if remove_maps and os.path.exists('ESLifier_Data/Form_ID_Maps'):
             shutil.rmtree('ESLifier_Data/Form_ID_Maps')
         if os.path.exists("ESLifier_Data/winning_file_history_dict.json"):
@@ -856,6 +857,7 @@ class main(QWidget):
                 if os.path.exists(file):
                     os.remove(file)
             self.prune_empty_dirs_recursive(output_folder, output_folder)
+        QApplication.restoreOverrideCursor()
 
     def calculate_stats(self):
         self.output_folder_full = os.path.join(self.output_folder_path, self.output_folder_name)
